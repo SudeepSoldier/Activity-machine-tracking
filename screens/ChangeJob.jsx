@@ -12,6 +12,9 @@ import AsyncStorage from "@react-native-async-storage/async-storage"
 import { useNavigation } from "@react-navigation/native"
 import Ionicons from "react-native-vector-icons/Ionicons"
 import { saveLastActiveScreen } from "../services/navigation-service"
+import { MAIN_WORLD } from "puppeteer"
+import { initDatabase,insertJobs,getJobs,startJobSession } from "../services/database-service"
+
 
 export default function ChangeJob() {
   const [jobs, setJobs] = useState([])
@@ -20,30 +23,38 @@ export default function ChangeJob() {
   const [searchQuery, setSearchQuery] = useState("")
   const [startingJob, setStartingJob] = useState(false)
   const navigation = useNavigation()
-
-
-  const storeData = async (key, value) => {
-    try {
-      console.log("data is saved succssfully................................")
-      await AsyncStorage.setItem(key, JSON.stringify(value));
-    } catch (e) {
-      console.error('Saving error', e);
-    }
-  };
+  const [localJobs,setLocalJobs] = useState([])
   
-  // Get data
-  const getData = async (key) => {
+  // ✅ Load array
+  
+  const removeItemFromStorage = async () => {
     try {
-      const jsonValue = await AsyncStorage.getItem('myArray');
-      const data = jsonValue != null ? JSON.parse(jsonValue) : [];
-      return data;
+      await AsyncStorage.removeItem("syncData");
+      console.log("remove item is called")
     } catch (e) {
-      console.error('Reading error', e);
-      return null;
+      console.error(`Failed to remove the item with key "${key}".`, e);
     }
   };
 
+  const addingSyncBody = async (data) => {
+    try {
+      const jsonValue = await AsyncStorage.getItem('syncData');
+  
+      // Make sure you parse and fallback to an empty array if null
+      const array = jsonValue != null ? JSON.parse(jsonValue) : [];
+  
+      // ✅ Now safe to spread
+      const modifiedArray = [...array, data];
+      
 
+      console.log("modifiedArray----------->",modifiedArray)
+
+      await AsyncStorage.setItem('syncData', JSON.stringify(modifiedArray));
+      console.log('Modified array saved to key2');
+    } catch (error) {
+      console.error('Error:', error);
+    }
+  };
   // Function to fetch jobs from API
   const fetchJobs = async () => {
     try {
@@ -81,6 +92,34 @@ export default function ChangeJob() {
       console.log("API response status:", response.status)
       console.log("API response data type:", typeof response.data)
       console.log("API response data preview:", JSON.stringify(response.data).substring(0, 200))
+
+      console.log(response.data)
+
+      const db = await initDatabase(); // Initialize DB & tables
+      
+      const assignedJobs = response.data.assignedJobs
+      const newUser = assignedJobs.map(({ number, priority, description }) => ({
+        id:number,
+        name:priority,
+        description:description
+      }));
+
+      console.log(newUser)
+      await insertJobs(db, newUser);
+
+      // console.log('User inserted successfully');
+      const testData = await getJobs(db)
+
+      setLocalJobs(testData)
+
+      // } catch (error) {
+      // console.error('Insert user failed:', error);
+      // }
+
+
+
+
+
 
       // Handle different response formats
       if (response.data) {
@@ -211,27 +250,23 @@ export default function ChangeJob() {
 
       // asyncApi data storing
 
+      const data = {
+          action:"start_job",
+          timestamp:response.data.assignment.startDate,
+          payload:{
+            jobid:response.data.job.id
+          }
+        }
+
+        addingSyncBody(data)
+
+        const db = await initDatabase(); // Initialize DB & tables
       
+        
 
-      const asyncAPIArray = getData("asyncApiData") || []
+        await startJobSession(db, response.data.assignment.id,response.data.job.id);
 
-      console.log("asyncAPIArray---->",asyncAPIArray)
-      console.log("asyncAPIArray---->",asyncAPIArray)
-      // const startJobAsyncData = {
-      //   action:"start_job",
-      //   timestamp:response.data.assignment.startDate,
-      //   payload:{
-      //     jobid:response.data.job.id
-      //   }
-      // }
-
-      // asyncAPIArray.push(startJobAsyncData)
-
-      // storeData("asyncApiData",asyncAPIArray)
-      // console.log("feiorufjewjfioo",response.data.assignment.startDate)
-      // console.log(response.data.job.id)
-
-      // console.log("getDataAsyncbojebdjhiuhyuyu",getData("asyncApiData"))
+        console.log('User inserted successfully');
 
       // Prepare job data for storage
       const jobData = {
@@ -283,6 +318,8 @@ export default function ChangeJob() {
   const handleJobSelect = async (job) => {
     console.log("Selected job:", job)
 
+    const index = localJobs.find((element)=>element.number===job.number)
+
     try {
       setStartingJob(true)
 
@@ -294,7 +331,7 @@ export default function ChangeJob() {
         const jobData = {
           jobId: job.id || job.jobId,
           jobNumber: job.number || job.jobNumber,
-          description: job.description || "Manufacturing of aerospace components",
+          description: job.description || localJobs[index].description,
           priority: job.priority || "medium",
           estimatedHours: job.estimatedHours || 4,
           // Add assignment fields
@@ -339,6 +376,8 @@ export default function ChangeJob() {
     saveLastActiveScreen("ChangeJob")
   }, [])
 
+  console.log("localJobs",localJobs)
+
   return (
     <SafeAreaView style={styles.root}>
       <View style={styles.header}>
@@ -373,9 +412,9 @@ export default function ChangeJob() {
         filteredJobs.map((job, index) => (
           <Job
             key={job.id || job.jobId || index}
-            title={job.number || job.jobNumber || `Job ${index + 1}`}
-            description={job.description || "Assigned Job"}
-            level={job.priority || "normal"}
+            title={job.number || job.jobNumber || localJobs[index].id}
+            description={job.description || localJobs[index].description}
+            level={job.priority || localJobs[index].name}
             time={job.estimatedHours || 0}
             onPress={() => handleJobSelect(job)}
           />

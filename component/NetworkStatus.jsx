@@ -16,13 +16,7 @@ const NetworkStatus = () => {
 
   console.log(isConnected)
 
-  return (
-    <View style={styles.container}>
-      {!isConnected && (
-        <Text style={styles.warningText}>⚠️ No Internet Connection</Text>
-      )}
-    </View>
-  );
+  return isConnected
 };
 
 const styles = StyleSheet.create({

@@ -13,6 +13,7 @@ import { useCallback } from "react"
 import { AppState } from "react-native"
 import axios from "axios"
 import { saveLastActiveScreen } from "../services/navigation-service"
+import NetInfo from '@react-native-community/netinfo';
 
 export default function NameOperations({ route }) {
   // Get job data from route params or use null if not available
@@ -25,32 +26,66 @@ export default function NameOperations({ route }) {
   const [userName, setUserName] = useState("Operator")
   const [isLoading, setIsLoading] = useState(false)
   const [apiLoading, setApiLoading] = useState(false)
-  const timer = useTimer(0, false, "job") // Use "job" as timer name, don't auto-start
+  const timer = useTimer(0, false, "job") // Use "job" as timer name, don't 
+  // auto-start
   const navigation = useNavigation()
   const appStateRef = useRef(AppState.currentState)
-
-  const storeData = async (key, value) => {
-    try {
-      console.log("data is saved succssfully................................")
-      await AsyncStorage.setItem(key, JSON.stringify(value));
-    } catch (e) {
-      console.error('Saving error', e);
-    }
-  };
+  // const [machineName,setMachineName] = useState('')
+  // const [machineCode,setMachineCode] = useState('')
   
-  // Get data
-  const getData = async (key) => {
+  const [isConnected, setIsConnected] = useState(true);
+
+  useEffect(() => {
+    const unsubscribe = NetInfo.addEventListener(state => {
+      setIsConnected(state.isConnected);
+    });
+
+    // Cleanup
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(()=>{
+
+    if(isConnected===false){
+
+      async function getmachineData(){
+        const data = await AsyncStorage.getItem("machineData")
+
+        const parseData = JSON.parse(data)
+
+        setMachineData(parseData)
+
+      } 
+
+      getmachineData()
+    }
+
+  })
+
+
+  const addingSyncBody = async (data) => {
     try {
-      const value = await AsyncStorage.getItem(key);
-      const parsedData = JSON.parse(value)
-      return parsedData;
-    } catch (e) {
-      console.error('Reading error', e);
-      return null;
+      const jsonValue = await AsyncStorage.getItem('syncData');
+  
+      // Make sure you parse and fallback to an empty array if null
+      const array = jsonValue != null ? JSON.parse(jsonValue) : [];
+  
+      // ✅ Now safe to spread
+      const modifiedArray = [...array, data];
+      
+
+      console.log("modifiedArray----------->",modifiedArray)
+
+      await AsyncStorage.setItem('syncData', JSON.stringify(modifiedArray));
+      console.log('Modified array saved to key2');
+
+      
+    } catch (error) {
+      console.error('Error:', error);
     }
   };
 
-
+  
 
   // Handle app state changes (background/foreground)
   useEffect(() => {
@@ -114,7 +149,12 @@ export default function NameOperations({ route }) {
           setJobData(response.data.activeJob)
         }
         if (response.data.machine) {
+
+
+          
           setMachineData(response.data.machine)
+
+
         }
         if (response.data.tablet) {
           setTabletData(response.data.tablet)
@@ -144,6 +184,7 @@ export default function NameOperations({ route }) {
     const initializeJob = async () => {
       try {
         console.log("[NameOperations] Initializing job with route params:", routeParams)
+
         setIsLoading(true)
 
         // Get user data from AsyncStorage
@@ -173,6 +214,8 @@ export default function NameOperations({ route }) {
 
             // Set machine and tablet data
             if (storedCompleteJobData.machine) {
+
+              await AsyncStorage.setItem("machineData",JSON.stringify(storedCompleteJobData.machine))
               setMachineData(storedCompleteJobData.machine)
             }
             if (storedCompleteJobData.tablet) {
@@ -304,10 +347,21 @@ export default function NameOperations({ route }) {
 
       console.log("[NameOperations] API request:", body)
 
+      
       // Make the API call to start a break
       const response = await axios.post(breaksApiUrl, body, { headers })
-
+      
       console.log("[NameOperations] Break API response:", response.status, response.data)
+      
+      const data = {
+        action:"start_break",
+        timestamp:response.data.activity.timestamp,
+        payload:{
+          jobId:response.data.activity.jobId
+        }
+      }
+
+      addingSyncBody(data)
 
       // Pause the job timer
       await timer.pause()

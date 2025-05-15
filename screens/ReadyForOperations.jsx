@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState,useEffect } from "react"
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, StatusBar, ActivityIndicator } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
 import AsyncStorage from "@react-native-async-storage/async-storage"
@@ -10,7 +10,8 @@ import Ionicons from "react-native-vector-icons/Ionicons"
 import { clearActiveJob } from "../services/job-service"
 import axios from "axios"
 import { ENDPOINTS } from "../constants/api"
-import NetworkStatus from "../component/NetworkStatus"
+import { initDatabase,insertUser } from "../services/database-service"
+import NetInfo from '@react-native-community/netinfo';
 
 export default function ReadyForOperations() {
   const { isLogin } = useContext(Context)
@@ -20,7 +21,41 @@ export default function ReadyForOperations() {
   const [error, setError] = useState("")
   const [deviceId, setDeviceId] = useState("")
 
+  const [isConnected, setIsConnected] = useState(true);
+
+  useEffect(() => {
+    const unsubscribe = NetInfo.addEventListener(state => {
+      setIsConnected(state.isConnected);
+    });
+
+    // Cleanup
+    return () => unsubscribe();
+  }, []);
+
+  console.log("network",isConnected)
+
+
   //const deviceId = "DEV001";
+
+  const addingSyncBody = async (data) => {
+    try {
+      const jsonValue = await AsyncStorage.getItem('syncData');
+  
+      // Make sure you parse and fallback to an empty array if null
+      const array = jsonValue != null ? JSON.parse(jsonValue) : [];
+  
+      // ✅ Now safe to spread
+      const modifiedArray = [...array, data];
+      
+
+      console.log("modifiedArray----------->",modifiedArray)
+
+      await AsyncStorage.setItem('syncData', JSON.stringify(modifiedArray));
+      console.log('Modified array saved to key2');
+    } catch (error) {
+      console.error('Error:', error);
+    }
+  };
 
   const handleChange = (text) => {
     // Allow only letters and numbers
@@ -66,6 +101,23 @@ export default function ReadyForOperations() {
         const token = response.data.token
         await AsyncStorage.setItem("token", token)
         
+          
+        const db = await initDatabase(); // Initialize DB & tables
+
+        const newUser = {
+            id:deviceId,
+            passcode:passcode,
+            username:response.data.user.username,
+            fullName:response.data.user.fullName,
+            email:response.data.user.email,
+            role:response.data.user.role,
+            token:response.data.token
+        };
+
+        await insertUser(db, newUser);
+
+        console.log('User inserted successfully');
+
         // Store user data if available
         if (response.data.user) {
           await AsyncStorage.setItem("userData", JSON.stringify(response.data.user))
@@ -110,6 +162,7 @@ export default function ReadyForOperations() {
     setShowPasscode(!showPasscode)
   }
 
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#F8FAFC" />
@@ -129,7 +182,6 @@ export default function ReadyForOperations() {
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Operator Login</Text>
         <Text style={styles.cardSubtitle}>Enter your passcode to begin</Text>
-        <NetworkStatus />
         
         <View style={styles.inputGroup}>
           <Text style={styles.inputLabel}>Device ID</Text>

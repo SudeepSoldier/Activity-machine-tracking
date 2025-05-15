@@ -9,6 +9,7 @@ import { clearActiveJob, getActiveJob, getCompleteActiveJob } from "../services/
 import axios from "axios"
 import Ionicons from "react-native-vector-icons/Ionicons"
 import { saveLastActiveScreen } from "../services/navigation-service"
+import { initDatabase,endJobSession,getUnsyncedSessions } from "../services/database-service"
 
 export default function EndJobScreen({ route }) {
   const { jobId, jobNumber, assignmentId } = route.params || {}
@@ -18,6 +19,27 @@ export default function EndJobScreen({ route }) {
   const [jobData, setJobData] = useState(null)
   const [completeJobData, setCompleteJobData] = useState(null)
   const navigation = useNavigation()
+
+
+  const addingSyncBody = async (data) => {
+    try {
+      const jsonValue = await AsyncStorage.getItem('syncData');
+  
+      // Make sure you parse and fallback to an empty array if null
+      const array = jsonValue != null ? JSON.parse(jsonValue) : [];
+  
+      // ✅ Now safe to spread
+      const modifiedArray = [...array, data];
+      
+
+      console.log("modifiedArray----------->",modifiedArray)
+
+      await AsyncStorage.setItem('syncData', JSON.stringify(modifiedArray));
+      console.log('Modified array saved to key2');
+    } catch (error) {
+      console.error('Error:', error);
+    }
+  };
 
   // Save EndJob as the last active screen when this component mounts
   useEffect(() => {
@@ -168,8 +190,29 @@ export default function EndJobScreen({ route }) {
         )
         console.log("[EndJobScreen] Job completed successfully:", response.status, response.data)
 
+        const data = {
+          action:"complete_job",
+          timestamp:response.data.assignment.startDate,
+          payload:{
+            jobId:response.data.assignment.jobId,
+            notes:response.data.completionNote,
+            capsulesMade:response.data.capsulesMade
+          }
+        }
+
+        addingSyncBody(data)
         // Clear the active job
         await clearActiveJob()
+
+        // const db = await initDatabase(); // Initialize DB & tables
+
+        // await endJobSession(db,response.data.activeJob.number);
+        
+        // const endJobData = await getUnsyncedSessions(db)
+        
+        // console.log("endJobData",endJobData)
+
+        // console.log('User inserted successfully');
 
         // Clear the saved EndJob params
         await AsyncStorage.removeItem("endJobParams")

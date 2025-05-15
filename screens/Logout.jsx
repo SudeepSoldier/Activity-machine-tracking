@@ -49,6 +49,7 @@ export default function Logout({ route }) {
       const token = await AsyncStorage.getItem("token")
 
       if (token) {
+
         // Set up headers with token
         const headers = {
           "Content-Type": "application/json",
@@ -63,6 +64,7 @@ export default function Logout({ route }) {
         try {
           // Make the API call
           console.log("Logging out via API")
+
           await axios.post(
             "https://v0-machine-tracking-z9-6fvoblp1l-agms-projects-dc96b51f.vercel.app/api/operator/logout",
             body,
@@ -73,6 +75,93 @@ export default function Logout({ route }) {
           console.error("Error calling logout API:", apiError.response?.data || apiError.message)
           // Continue with local logout even if API call fails
         }
+
+        
+        
+      }
+      
+      if(token){
+
+        const headers={
+          "Content-Type":"application/json",
+          Authorization:'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiIyYmRlYWM1MS0yOTI2LTQwZDctODAxYS0zMjM3NTdjNzMyYjIiLCJyb2xlIjoiT1BFUkFUT1IiLCJ0YWJsZXRJZCI6ImEwYzU5MTkxLTVhMDQtNDA1Ni05OWU2LTU4NWQyMWVkNzI0NiIsIm1hY2hpbmVJZCI6ImNjNzYxYThjLTEwZWMtNDYxNi04NzgxLWRiN2M3ZTcyZmI0MiIsImlhdCI6MTc0NzIwMjQyNH0.Y-GyOCUr2T9ce3IB0AZJmdd54xl85d6LgnJAIQc2eFA'
+        } 
+
+        const jsonValue = await AsyncStorage.getItem('syncData');
+    
+        // Make sure you parse and fallback to an empty array if null
+        const array = jsonValue != null ? JSON.parse(jsonValue) : [];
+  
+        console.log(array)
+
+        const body = [
+          {
+              action: "start_job",
+              timestamp: "2025-05-13T10:35:00.000Z",
+              payload: {
+                  jobId: "41b01df3-ce40-44b9-9795-4c537cb7d24b"
+              }
+          },
+          {
+              action: "start_break",
+              timestamp: "2025-05-13T12:00:00.000Z",
+              payload: {
+                  jobId: "41b01df3-ce40-44b9-9795-4c537cb7d24b"
+              }
+          },
+          {
+              action: "end_break",
+              timestamp: "2025-05-13T12:30:00.000Z",
+              payload: {
+                  jobId: "41b01df3-ce40-44b9-9795-4c537cb7d24b"
+              }
+          },
+          {
+              action: "change_job",
+              timestamp: "2025-05-13T14:15:00.000Z",
+              payload: {
+                  jobNumber: "JOB-2023-007"
+              }
+          },
+          {
+              action: "complete_job",
+              timestamp: "2025-05-13T16:45:00.000Z",
+              payload: {
+                  jobId: "8ea81fae-f4a0-4fea-9f5a-aea28a5ee130",
+                  notes: "Completed successfully",
+                  capsulesMade: 250
+              }
+          }
+      ]
+
+        try {
+          // Make the API call
+          console.log("sync via API")
+
+          console.log(body)
+          
+          console.log(headers)
+
+          const response = await axios.post(
+            "https://v0-machine-tracking-z9-a704w5wuf-agms-projects-dc96b51f.vercel.app/api/operator/sync",body,
+            { headers },
+          )
+
+          console.log("sync API call successful")
+
+          console.log(response.data)
+
+        } catch (apiError) {
+          console.error("Error calling sync API:", apiError.response?.data || apiError.message)
+          console.error("Error calling sync API:", {
+            status: apiError.response?.status,
+            headers: apiError.response?.headers,
+            data: apiError.response?.data,
+          });
+          
+          // Continue with local logout even if API call fails
+        }
+
       }
 
       // Clear token and user data from AsyncStorage
@@ -82,6 +171,10 @@ export default function Logout({ route }) {
       // Call context logout function
       await logout()
 
+
+      await AsyncStorage.removeItem("syncData");
+      console.log("remove item is called")
+      
       // Navigate to login screen
       // Replace this:
       // navigation.reset({

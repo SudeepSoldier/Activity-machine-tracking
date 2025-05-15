@@ -20,24 +20,23 @@ export default function OnBreak({ route }) {
   const appStateRef = useRef(AppState.currentState)
 
 
-  const storeData = async (key, value) => {
+  const addingSyncBody = async (data) => {
     try {
-      console.log("data is saved succssfully................................")
-      await AsyncStorage.setItem(key, value);
-    } catch (e) {
-      console.error('Saving error', e);
-    }
-  };
+      const jsonValue = await AsyncStorage.getItem('syncData');
   
-  // Get data
-  const getData = async (key) => {
-    try {
-      const value = await AsyncStorage.getItem(key);
-      const parsedData = JSON.parse(value)
-      return parsedData;
-    } catch (e) {
-      console.error('Reading error', e);
-      return null;
+      // Make sure you parse and fallback to an empty array if null
+      const array = jsonValue != null ? JSON.parse(jsonValue) : [];
+  
+      // ✅ Now safe to spread
+      const modifiedArray = [...array, data];
+      
+
+      console.log("modifiedArray----------->",modifiedArray)
+
+      await AsyncStorage.setItem('syncData', JSON.stringify(modifiedArray));
+      console.log('Modified array saved to key2');
+    } catch (error) {
+      console.error('Error:', error);
     }
   };
 
@@ -156,6 +155,8 @@ export default function OnBreak({ route }) {
 
         }
 
+
+
         console.log("[OnBreak] End break API request:", body)
 
         // Make the API call to end the break
@@ -163,6 +164,16 @@ export default function OnBreak({ route }) {
 
         console.log("[OnBreak] End break API response:", response.status, response.data)
 
+        
+        const data = {
+          action:"end_break",
+          timestamp:response.data.activity.timestamp,
+          payload:{
+            jobId:response.data.activity.jobId
+          }
+        }
+
+        addingSyncBody(data)
         // Clear the break ID
         await AsyncStorage.removeItem("currentBreakId")
       }
