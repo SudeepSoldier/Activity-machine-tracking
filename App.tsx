@@ -33,6 +33,7 @@ function AppContent() {
 
         // Get the last active screen
         const lastActiveScreen = await getLastActiveScreen()
+        
         console.log("[App] Last active screen:", lastActiveScreen)
 
         if (activeJobExists) {

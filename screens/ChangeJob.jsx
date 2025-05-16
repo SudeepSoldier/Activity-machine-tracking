@@ -14,7 +14,7 @@ import Ionicons from "react-native-vector-icons/Ionicons"
 import { saveLastActiveScreen } from "../services/navigation-service"
 import { MAIN_WORLD } from "puppeteer"
 import { initDatabase,insertJobs,getJobs,startJobSession } from "../services/database-service"
-
+import NetInfo from '@react-native-community/netinfo';
 
 export default function ChangeJob() {
   const [jobs, setJobs] = useState([])
@@ -24,9 +24,39 @@ export default function ChangeJob() {
   const [startingJob, setStartingJob] = useState(false)
   const navigation = useNavigation()
   const [localJobs,setLocalJobs] = useState([])
-  
+  const [isConnected, setIsConnected] = useState(true);
+
+  useEffect(() => {
+    const unsubscribe = NetInfo.addEventListener(state => {
+      setIsConnected(state.isConnected);
+    });
+
+    // Cleanup
+    return () => unsubscribe();
+  }, []);
+
   // ✅ Load array
   
+  useEffect(()=>{
+
+    console.log("isConnected----->",isConnected)
+    if(isConnected===false){
+      
+      async function takeNumberOfJobs(){
+  
+        const job = await AsyncStorage.getItem("assignedJobs")
+
+        const parsedData = JSON.parse(job)
+
+        console.log("jobs-------||------->",parsedData)
+
+        setJobs(parsedData)
+      }
+  
+      takeNumberOfJobs()
+    }
+  },[isConnected])
+
   const removeItemFromStorage = async () => {
     try {
       await AsyncStorage.removeItem("syncData");
@@ -104,22 +134,21 @@ export default function ChangeJob() {
         description:description
       }));
 
+      await AsyncStorage.setItem("numberOfJobs",(response.data.assignedJobs.length).toString())
+
+      console.log("number of jobs",response.data.assignedJobs.length)
+      
       console.log(newUser)
+      
       await insertJobs(db, newUser);
 
+      await AsyncStorage.setItem("assignedJobs",JSON.stringify(newUser))
       // console.log('User inserted successfully');
-      const testData = await getJobs(db)
-
-      setLocalJobs(testData)
+      
 
       // } catch (error) {
       // console.error('Insert user failed:', error);
       // }
-
-
-
-
-
 
       // Handle different response formats
       if (response.data) {
@@ -160,49 +189,51 @@ export default function ChangeJob() {
         console.log("Setting jobs state with", jobsData.length, "jobs")
         setJobs(jobsData)
       }
-    } catch (error) {
-      console.error("❌ Error fetching jobs:")
+    } 
+    // catch (error) {
+    //   console.error("❌ Error fetching jobs:")
 
-      if (error.response) {
-        // The request was made and the server responded with a status code
-        // that falls out of the range of 2xx
-        console.error("Response status:", error.response.status)
-        console.error("Response data:", JSON.stringify(error.response.data))
+    //   if (error.response) {
+    //     // The request was made and the server responded with a status code
+    //     // that falls out of the range of 2xx
+    //     console.error("Response status:", error.response.status)
+    //     console.error("Response data:", JSON.stringify(error.response.data))
 
-        if (error.response.status === 401) {
-          setError("Authentication failed. Your session may have expired. Please log in again.")
-        } else {
-          setError(`Server error: ${error.response.status}. ${error.response.data?.message || ""}`)
-        }
-      } else if (error.request) {
-        // The request was made but no response was received
-        console.error("No response received:", error.request)
-        setError("No response from server. Please check your connection.")
-      } else {
-        // Something happened in setting up the request that triggered an Error
-        console.error("Error message:", error.message)
-        setError(`Error: ${error.message}`)
-      }
+    //     if (error.response.status === 401) {
+    //       setError("Authentication failed. Your session may have expired. Please log in again.")
+    //     } else {
+    //       setError(`Server error: ${error.response.status}. ${error.response.data?.message || ""}`)
+    //     }
+    //   } else if (error.request) {
+    //     // The request was made but no response was received
+    //     console.error("No response received:", error.request)
+    //     setError("No response from server. Please check your connection.")
+    //   } else {
+    //     // Something happened in setting up the request that triggered an Error
+    //     console.error("Error message:", error.message)
+    //     setError(`Error: ${error.message}`)
+    //   }
 
-      // Use sample data as fallback
-      const sampleJobs = [
-        {
-          id: "6b31c81c-87e5-4648-ae55-36ec822246d3",
-          number: "JOB-2023-001",
-          description: "Machine Maintenance",
-          priority: "high",
-          estimatedHours: 2,
-        },
-        {
-          id: "3d32026d-2cec-4d2c-acc7-35172b41a284",
-          number: "JOB-2023-002",
-          description: "Part Production",
-          priority: "medium",
-          estimatedHours: 4,
-        },
-      ]
-      setJobs(sampleJobs)
-    } finally {
+    //   // Use sample data as fallback
+    //   const sampleJobs = [
+    //     {
+    //       id: "6b31c81c-87e5-4648-ae55-36ec822246d3",
+    //       number: "JOB-2023-001",
+    //       description: "Machine Maintenance",
+    //       priority: "high",
+    //       estimatedHours: 2,
+    //     },
+    //     {
+    //       id: "3d32026d-2cec-4d2c-acc7-35172b41a284",
+    //       number: "JOB-2023-002",
+    //       description: "Part Production",
+    //       priority: "medium",
+    //       estimatedHours: 4,
+    //     },
+    //   ]
+    //   setJobs(sampleJobs)
+    // } 
+    finally {
       setLoading(false)
     }
   }
@@ -368,6 +399,8 @@ export default function ChangeJob() {
 
   // Fetch jobs on component mount
   useEffect(() => {
+
+    if(isConnected===true)
     fetchJobs()
   }, [])
 
@@ -376,7 +409,7 @@ export default function ChangeJob() {
     saveLastActiveScreen("ChangeJob")
   }, [])
 
-  console.log("localJobs",localJobs)
+  console.log("localJobs",jobs)
 
   return (
     <SafeAreaView style={styles.root}>
@@ -411,16 +444,16 @@ export default function ChangeJob() {
       ) : (
         filteredJobs.map((job, index) => (
           <Job
-            key={job.id || job.jobId || index}
-            title={job.number || job.jobNumber || localJobs[index].id}
-            description={job.description || localJobs[index].description}
-            level={job.priority || localJobs[index].name}
-            time={job.estimatedHours || 0}
+            key={job?.id || job?.jobId || index}
+            title={job?.number || job?.jobNumber || jobs[index]?.id}
+            description={job?.description || jobs[index]?.description}
+            level={job?.priority || jobs[index]?.name}
+            time={job?.estimatedHours || 0}
             onPress={() => handleJobSelect(job)}
           />
         ))
       )}
-
+{/* job?.number || job?.jobNumber || */}
       <View style={styles.bottomText}>
         <Text style={styles.text}>Select a job to begin working on it</Text>
         <Text style={styles.text}>If you don't see a job, contact your supervisor</Text>

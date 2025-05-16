@@ -34,7 +34,6 @@ export default function ReadyForOperations() {
 
   console.log("network",isConnected)
 
-
   //const deviceId = "DEV001";
 
   const addingSyncBody = async (data) => {
@@ -134,6 +133,7 @@ export default function ReadyForOperations() {
 
         // Update authentication state
         // This will trigger navigation to ChangeJob screen
+        
         isLogin()
       } else {
         setError("Invalid response from server. Please try again.")

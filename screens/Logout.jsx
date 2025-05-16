@@ -75,92 +75,41 @@ export default function Logout({ route }) {
           console.error("Error calling logout API:", apiError.response?.data || apiError.message)
           // Continue with local logout even if API call fails
         }
-
-        
-        
       }
       
       if(token){
-
-        const headers={
-          "Content-Type":"application/json",
-          Authorization:'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiIyYmRlYWM1MS0yOTI2LTQwZDctODAxYS0zMjM3NTdjNzMyYjIiLCJyb2xlIjoiT1BFUkFUT1IiLCJ0YWJsZXRJZCI6ImEwYzU5MTkxLTVhMDQtNDA1Ni05OWU2LTU4NWQyMWVkNzI0NiIsIm1hY2hpbmVJZCI6ImNjNzYxYThjLTEwZWMtNDYxNi04NzgxLWRiN2M3ZTcyZmI0MiIsImlhdCI6MTc0NzIwMjQyNH0.Y-GyOCUr2T9ce3IB0AZJmdd54xl85d6LgnJAIQc2eFA'
-        } 
-
-        const jsonValue = await AsyncStorage.getItem('syncData');
-    
-        // Make sure you parse and fallback to an empty array if null
-        const array = jsonValue != null ? JSON.parse(jsonValue) : [];
-  
-        console.log(array)
-
-        const body = [
-          {
-              action: "start_job",
-              timestamp: "2025-05-13T10:35:00.000Z",
-              payload: {
-                  jobId: "41b01df3-ce40-44b9-9795-4c537cb7d24b"
-              }
-          },
-          {
-              action: "start_break",
-              timestamp: "2025-05-13T12:00:00.000Z",
-              payload: {
-                  jobId: "41b01df3-ce40-44b9-9795-4c537cb7d24b"
-              }
-          },
-          {
-              action: "end_break",
-              timestamp: "2025-05-13T12:30:00.000Z",
-              payload: {
-                  jobId: "41b01df3-ce40-44b9-9795-4c537cb7d24b"
-              }
-          },
-          {
-              action: "change_job",
-              timestamp: "2025-05-13T14:15:00.000Z",
-              payload: {
-                  jobNumber: "JOB-2023-007"
-              }
-          },
-          {
-              action: "complete_job",
-              timestamp: "2025-05-13T16:45:00.000Z",
-              payload: {
-                  jobId: "8ea81fae-f4a0-4fea-9f5a-aea28a5ee130",
-                  notes: "Completed successfully",
-                  capsulesMade: 250
-              }
-          }
-      ]
-
-        try {
-          // Make the API call
-          console.log("sync via API")
-
-          console.log(body)
-          
-          console.log(headers)
-
-          const response = await axios.post(
-            "https://v0-machine-tracking-z9-a704w5wuf-agms-projects-dc96b51f.vercel.app/api/operator/sync",body,
-            { headers },
-          )
-
-          console.log("sync API call successful")
-
-          console.log(response.data)
-
-        } catch (apiError) {
-          console.error("Error calling sync API:", apiError.response?.data || apiError.message)
-          console.error("Error calling sync API:", {
-            status: apiError.response?.status,
-            headers: apiError.response?.headers,
-            data: apiError.response?.data,
-          });
-          
           // Continue with local logout even if API call fails
-        }
+          const token = await AsyncStorage.getItem("token")
+
+          const syncBodyData = await AsyncStorage.getItem("syncData")
+      
+          const headers = {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+            'Cookie':'_vercel_jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJ5eFE2aVBVbTdzajBCYTBKT29JdjFnZ1oiLCJpYXQiOjE3NDY1MzY2MzEsIm93bmVySWQiOiJ0ZWFtX1RUQW04eTFBV0JPNFBsRXhLSkxtVHRuaiIsImF1ZCI6InYwLW1hY2hpbmUtdHJhY2tpbmctejktanBxcTVoNWQ0LWFnbXMtcHJvamVjdHMtZGM5NmI1MWYudmVyY2VsLmFwcCIsInVzZXJuYW1lIjoibXVydHV6YWthcGFkaWExMjEtZ21haWxjb20iLCJzdWIiOiJzc28tcHJvdGVjdGlvbiJ9.SViuUYgGVOvKFgM1ddfssHZDRqnoow_JWu1SyeiXmW0; token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiIyZTc4NDg1My0zZmY4LTQwODItYWIwYS04ODc2ODhkZTYzYmQiLCJ1c2VybmFtZSI6ImFkbWluIiwicm9sZSI6IkFETUlOIiwiaWF0IjoxNzQ2NTM3MTYzLCJleHAiOjE3NDY2MjM1NjN9.vFl3_Z4uEf68grZYpgbQJYLGrwcagxvMbxhAY2YVz1U'
+          }
+      
+          // Set up request body
+          const body = JSON.parse(syncBodyData)
+          
+          console.log("syncDatagojtgio5jt",body)
+      
+          try {
+            // Make the API call
+            console.log("Logging out via API")
+      
+            const response = await axios.post(
+              "https://v0-machine-tracking-z9-a704w5wuf-agms-projects-dc96b51f.vercel.app/api/operator/sync",
+              body,
+              { headers },
+            )
+            console.log("Logout API call successful")
+      
+            console.log(response.data)
+          } catch (apiError) {
+            console.error("Error calling logout API:", apiError.response?.data || apiError.message)
+            // Continue with local logout even if API call fails
+          }
 
       }
 
@@ -194,8 +143,11 @@ export default function Logout({ route }) {
     }
   }
 
-  const handleCancel = () => {
+  const handleCancel = async () => {
     navigation.goBack()
+
+    
+
   }
 
   return (
